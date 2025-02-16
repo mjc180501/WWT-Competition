@@ -12,31 +12,30 @@ class database:
 
     # create the database, only needs to be run once when the class is initialized 
     def create_database(self):
-
-        # sql table with automatically increasing integer id and BLOCKED url 
+        # Add visit_count to all tables
         self.cursor.execute("""
                            CREATE TABLE IF NOT EXISTS blocked (
                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           url TEXT NOT NULL UNIQUE
+                           url TEXT NOT NULL UNIQUE,
+                           visit_count INTEGER DEFAULT 0
                            )
                            """)
 
-        # sql table with automatically increasing integer id and FLAGGED url
         self.cursor.execute("""
                             CREATE TABLE IF NOT EXISTS flagged (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            url TEXT NOT NULL UNIQUE
+                            url TEXT NOT NULL UNIQUE,
+                            visit_count INTEGER DEFAULT 0
                             )
                             """)
 
-        # sql table with automatically increasing integer id and WHITELISTED url
         self.cursor.execute("""
                             CREATE TABLE IF NOT EXISTS whitelisted (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            url TEXT NOT NULL UNIQUE
+                            url TEXT NOT NULL UNIQUE,
+                            visit_count INTEGER DEFAULT 0
                             )
                             """)
-        
 
         # stage the changes 
         self.connection.commit()
@@ -122,27 +121,26 @@ class database:
         self.connection.commit()
         print("Initial lists of websites added.")
 
-
-    # add a website to the blocked list, notice how it says condemmed lol
+    # add a website to the blocked list
     def add_blocked(self, condemned):
-        sql = "INSERT OR IGNORE INTO blocked (url) VALUES ("+condemned+")"
-        self.cursor.execute(sql)
+        sql = "INSERT OR IGNORE INTO blocked (url) VALUES (?)"
+        self.cursor.execute(sql, (condemned,))
 
         self.connection.commit()
         print("Blocked " + condemned)
 
     # add a website to the flagged list
     def add_flagged(self, purgatory):
-        sql = "INSERT OR IGNORE INTO flagged (url) VALUES ("+purgatory+")"
-        self.cursor.execute(sql)
+        sql = "INSERT OR IGNORE INTO flagged (url) VALUES (?)"
+        self.cursor.execute(sql, (purgatory,))
 
         self.connection.commit()
         print("Flagged " + purgatory)
 
-    # add a website to the whitelisted list (heaven)
+    # add a website to the whitelisted list
     def add_whitelisted(self, saved):
-        sql = "INSERT OR IGNORE INTO whitelisted (url) VALUES ("+saved+")"
-        self.cursor.execute(sql)
+        sql = "INSERT OR IGNORE INTO whitelisted (url) VALUES (?)"
+        self.cursor.execute(sql, (saved,))
 
         self.connection.commit()
         print("Whitelisted " + saved)
@@ -155,13 +153,20 @@ class database:
         for table in tables:
 
             # sql command to find the url from the table
-            sql = "SELECT url FROM " +table+ " WHERE url ='"+url+"'"
-            result = self.cursor.execute(sql)
+            sql = "SELECT url FROM " + table + " WHERE url = ?"
+            result = self.cursor.execute(sql, (url,))
             # use fetchone to get one result
             if result.fetchone() is not None:
                 print(url + " found in " + table)
-                # output the table name
+
+                # Increment the visit count
+                update_sql = "UPDATE " + table + " SET visit_count = visit_count + 1 WHERE url = ?"
+                self.cursor.execute(update_sql, (url,))
+                self.connection.commit()
+
+                print(f"Visit count for {url} in {table} updated.")
                 return table
+
         # if not found in a table, return not found in database 
         print("URL not found in database")
         return url + " not found in database"
@@ -171,23 +176,22 @@ class database:
         self.connection = sqlite3.connect(self.name)
         self.cursor = self.connection.cursor()
 
-    # close the connection, has to be run everytime we use a function from this class, and when it is initialized
+    # close the connection
     def close_connection(self):
         self.connection.close()
         print("Connection closed")
 
-        
-print("sldkfjasdlfk")
-# initialize, only needs to be run once        
+
+# yuhh databse 
 db = database()
-# db.initial_listed()
+db.initial_listed()
+
+# check 
+db.open_connection()
+db.check_lists("chatgpt.")
+
+
+# display 
 db.display()
-# db.close_connection()
 
-
-def ImmediateFilter(webpage):
-    db.open_connection()
-    db.check_lists(webpage)
-    db.close_connection()
-
-ImmediateFilter("chatgpt.com")
+db.close_connection()
